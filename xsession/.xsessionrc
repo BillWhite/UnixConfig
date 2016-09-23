@@ -1,0 +1,12 @@
+#!/bin/bash
+
+XSESSION_CONFIG_HOME=$HOME/.xsessionrc.d
+if [ -d "$XSESSION_CONFIG_HOME" ] ; then
+    for file in "$XSESSION_CONFIG_HOME/[0-9][0-9][0-9]*.sh"; do
+	if [ -x "$file" ] ; then
+	    . "$file"
+	fi
+    done
+fi
+
+      
