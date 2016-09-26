@@ -1,12 +1,5 @@
 #!/bin/bash
-
-PROFILE_CONFIG_HOME=$HOME/.bash_profile.d
-if [ -d "$PROFILE_CONFIG_HOME" ] ; then
-    for file in "$PROFILE_CONFIG_HOME/[0-9][0-9][0-9]*.sh"; do
-	if [ -x "$file" ] ; then
-	    . "$file"
-	fi
-    done
-fi
-
-      
+. "$HOME/.bash_functions"
+echo start bash_profile on $(date) &>> "$HOME/.startup.log"
+read_bash_init_files "$HOME/.bash_profile.d" -x &>> "$HOME/.startup.log"
+echo end bash_profile on $(date) &>> "$HOME/.startup.log"

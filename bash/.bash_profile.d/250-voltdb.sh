@@ -1,1 +1,1 @@
-export W="$HOME/workspace.voltdb"
+export W="$HOME/workspaces/workspace.vdb"
