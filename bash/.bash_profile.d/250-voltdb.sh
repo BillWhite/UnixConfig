@@ -1,1 +1,1 @@
-export W="$HOME/workspaces/workspace.vdb"
+export W="$b/workspaces/workspace.vdb"

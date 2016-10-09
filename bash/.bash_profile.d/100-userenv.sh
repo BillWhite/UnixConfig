@@ -1,4 +1,42 @@
+#
+# Set b to some ephemeral space.
+# Set d to the dropbox location.
+#
+# First, defaults, and make sure they
+# are exported.
+#
 export b=/home2/poppa
-export ba="$b/arch/glnxa64"
 export d="$b/Dropbox"
 
+#
+# Now try specific versions by OS.
+#
+case $UNAME_KERNEL_NAME of
+Linux)
+	;;
+Darwin)
+	;;
+esac
+
+#
+# Finally, override by host name.
+#
+case $UNAME_HOST_NAME of
+radagast)
+	# Use the defaults
+	;;
+bills-u14)
+	b=$HOME
+	d=$HOME/Dropbox
+	;;
+bills-mbp)
+	b=$HOME
+	d=$HOME/Dropbox
+	;;
+*)
+	;;
+esac
+#
+# Set some things that depend on the above.
+#
+export ba="$b/arch/glnxa64"
