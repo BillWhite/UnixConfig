@@ -11,7 +11,7 @@ export d="$b/Dropbox"
 #
 # Now try specific versions by OS.
 #
-case $UNAME_KERNEL_NAME of
+case $UNAME_KERNEL_NAME in
 Linux)
 	;;
 Darwin)
@@ -21,7 +21,7 @@ esac
 #
 # Finally, override by host name.
 #
-case $UNAME_HOST_NAME of
+case $UNAME_HOST_NAME in
 radagast)
 	# Use the defaults
 	;;

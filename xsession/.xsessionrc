@@ -1,9 +1,7 @@
 #!/bin/bash
 
-touch $HOME/.startup.log
-echo xsessionrc on $(date) >> "$HOME/.startup.log"
-
 . "$HOME/.bash_functions"
-echo start xsessionrc on $(date) &>> "$HOME/.startup.log"
-read_bash_init_files "$HOME/.xsessionrc.d" -x &>> $HOME/.startup.log
-echo end xsessionrc on $(date) &>> "$HOME/.startup.log"
+to_startup_log echo "xsessionrc on $(date)"
+to_startup_log echo "start xsessionrc on $(date)"
+to_startup_log read_bash_init_files "$HOME/.xsessionrc.d"
+to_startup_log echo "end xsessionrc on $(date)"

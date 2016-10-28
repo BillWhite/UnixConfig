@@ -1,4 +1,4 @@
-# set PATH so it includes user's private bin if it exists
+# Remove $1 from the current path.
 clean_path() {
     local DIR="$1"
     local EXPLODED_PATH
@@ -37,7 +37,8 @@ fi
 
 PATH="$LOGIN_PATH"
 
-prepend_to_path "$HOME/bin"
+prepend_to_path "$HOME/ubin"
+prepend_to_path "$HOME/vbin"
 append_to_path "$HOME/.local/bin"
 append_to_path "$ba/bin"
 
