@@ -25,7 +25,7 @@ case $UNAME_HOST_NAME in
 radagast)
 	# Use the defaults
 	;;
-bills-u14)
+bills-u14|bills-ubuntu)
 	b=$HOME
 	d=$HOME/Dropbox
 	;;

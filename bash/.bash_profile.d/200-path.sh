@@ -1,5 +1,5 @@
-# Remove $1 from the current path.
-clean_path() {
+# Return 1 if $1 is on the current path.
+is_on_path() {
     local DIR="$1"
     local EXPLODED_PATH
     if [ -d "$DIR" ] ; then
@@ -16,7 +16,7 @@ clean_path() {
 append_to_path() {
     local DIR="$1"
     if [ -d "$DIR" ] ; then
-        if clean_path "$DIR" ; then
+        if is_on_path "$DIR" ; then
             export PATH="$PATH:$DIR"
         fi
     fi
@@ -25,7 +25,7 @@ append_to_path() {
 prepend_to_path() {
     local DIR="$1"
     if [ -d "$DIR" ] ; then
-        if clean_path "$DIR"; then
+        if is_on_path "$DIR"; then
             export PATH="$DIR:$PATH"
         fi
     fi
