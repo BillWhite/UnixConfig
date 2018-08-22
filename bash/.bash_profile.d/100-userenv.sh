@@ -5,7 +5,11 @@
 # First, defaults, and make sure they
 # are exported.
 #
-export b=/home2/poppa
+if [ -d "/home2/poppa" ] ; then
+    export b=/home2/poppa
+else
+    export b="$HOME"
+fi
 export d="$b/Dropbox"
 
 #
@@ -13,6 +17,7 @@ export d="$b/Dropbox"
 #
 case $UNAME_KERNEL_NAME in
 Linux)
+    export VISUAL=vi
 	;;
 Darwin)
 	;;

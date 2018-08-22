@@ -10,7 +10,7 @@ case $1 in
     # timing.  (jackd 1.9.9, fluidsynth 1.1.5)
     # If you aren't running pulseaudio, you can remove the pasuspender line.
     pasuspender -- \
-        jackd -d alsa --device hw:0 --rate 44100 --period 128 \
+        jackd -d alsa --device hw:0 --rate 44100 --period 256 \
             &>/tmp/jackd.out &
 
     # Start fluidsynth
