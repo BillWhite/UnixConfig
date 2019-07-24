@@ -34,9 +34,10 @@ prepend_to_path() {
 prepend_to_path "$HOME/ubin"
 prepend_to_path "$HOME/vbin"
 prepend_to_path "$HOME/.local/bin"
+prepend_to_path "/opt/bin"
 append_to_path "$ba/bin"
 
-LD_LIBRARY_PATH="/usr/local/lib:$ba/lib"
+LD_LIBRARY_PATH="/usr/local/lib:/opt/lib:$ba/lib"
 
 export PATH
 export LD_LIBRARY_PATH

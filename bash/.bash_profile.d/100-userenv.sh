@@ -11,7 +11,7 @@ else
     export b="$HOME"
 fi
 export d="$b/Dropbox"
-
+export gd="$b/googledrive"
 #
 # Now try specific versions by OS.
 #

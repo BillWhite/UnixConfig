@@ -1,1 +1,0 @@
-export WB="$b/wortspaces"
