@@ -1,3 +1,0 @@
-#!/bin/sh
-exec gnome-terminal --command="tmux new-session -c \"$1\""
-
