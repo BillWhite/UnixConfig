@@ -16,7 +16,7 @@ TEMPLATE=JamulusTemplate
 TAG="8AJ"
 LOGDIR="$HOME/2/tmp"
 JACK_LOG_FILE="/dev/null"
-BUILT_LOG_FILE="/dev/null"
+BUILTIN_LOG_FILE="/dev/null"
 SABRENT_LOG_FILE="/dev/null"
 JAMULUS_LOG_FILE="/dev/null"
 ARDOUR_LOG_FILE="/dev/null"
@@ -96,7 +96,7 @@ if isRunning ; then
 fi
 
 log -n "Starting qjackctl..."
-(qjackctl --start --preset FastTrack &) >& "$JACK_LOG_FILE"
+(qjackctl --start --preset FastTrack >& "$JACK_LOG_FILE" &)
 portWait 3 system:capture || exit 1
 log done.
 
@@ -106,25 +106,25 @@ jack_disconnect 'system:capture_1' 'PulseAudio JACK Source:front-left'
 jack_disconnect 'system:capture_2' 'PulseAudio JACK Source:front-right'
 
 log -n "Starting Jamulus..."
-(Jamulus --nojackconnect &) >& "$JAMULUS_LOG_FILE"
+(Jamulus --nojackconnect >& "$JAMULUS_LOG_FILE" &)
 portWait 3 Jamulus || exit 1
 log done.
 
 log "Exposing builtin HW..."
-(alsa_in -j builtin -dhw:0 &) >& "BUILTIN_LOG_FILE"
+(alsa_in -j builtin -dhw:0 >& "$BUILTIN_LOG_FILE" &)
 portWait 3 builtin || exit 1
 
-(alsa_in -j sabrent -dhw:2 &) >& "$SABRENT_LOG_FILE"
+(alsa_in -j sabrent -dhw:2 ) >& "$SABRENT_LOG_FILE" &)
 portWait 3 sabrent || exit 1
 log done.
 
 log "Exposing midi controllers..."
-(a2jmidid -e &) > "$MIDI_LOG_FILE"
+(a2jmidid -e > "$MIDI_LOG_FILE" &)
 portWait 3 a2j:EWI || log "Connect midi controller."
 log done.
 
 log "Starting Ardour6..."
-(Ardour6 --template "$TEMPLATE" --new "$(sessionName)" &) >& "$ARDOUR_LOG_FILE"
+(Ardour6 --template "$TEMPLATE" --new "$(sessionName)" >& "$ARDOUR_LOG_FILE" &)
 log done.
 
 exec alsamixer -c Track -V all

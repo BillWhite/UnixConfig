@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 now() {
   echo "$(date "+%s")"
@@ -12,12 +12,21 @@ sessionName() {
   echo "$TAG $(date --iso=seconds | sed 's/:/-/g')"
 }
 
-TEMPLATE=PracticeTemplate
-TAG="GRI"
+launch() {
+  local LOG_FILE="$1"
+  # echo "LOG FILE is \"$LOG_FILE\""
+  shift
+  echo "STARTING \"$@\"" > "$LOG_FILE"
+  ("$@" >> "$LOG_FILE" 2&>1 &) 
+}
+
+TEMPLATE=JamulusTemplate
+TAG="8AJ"
 LOGDIR="$HOME/2/tmp"
 JACK_LOG_FILE="/dev/null"
 BUILTIN_LOG_FILE="/dev/null"
 SABRENT_LOG_FILE="/dev/null"
+JAMULUS_LOG_FILE="/dev/null"
 ARDOUR_LOG_FILE="/dev/null"
 MIDI_LOG_FILE="/dev/null"
 
@@ -26,6 +35,11 @@ while [ -n "$1" ] ; do
   --template|-T)
     shift
     TEMPLATE="$1"
+    shift
+    ;;
+  --simple|-S)
+    shift
+    TEMPLATE='SimpleJamulusTemplate'
     shift
     ;;
   --tag|-G)
@@ -37,6 +51,7 @@ while [ -n "$1" ] ; do
     JACK_LOG_FILE="$LOGDIR/jack.log"
     BUILTIN_LOG_FILE="$LOGDIR/builtin_in.log"
     SABRENT_LOG_FILE="$LOGDIR/sabrent_in.log"
+    JAMULUS_LOG_FILE="$LOGDIR/jamulus.log"
     ARDOUR_LOG_FILE="$LOGDIR/ardour.log"
     MIDI_LOG_FILE="$LOGDIR/midi.log"
     shift
@@ -76,8 +91,9 @@ portWait() {
 
 isRunning() {
   lookForPort system || \
-	lookForPort "builtin" || \
-	lookForPort "sabrent" ||
+	lookForPort Jamulus || \
+	lookForPort builtin || \
+	lookForPort sabrent || \
 	return 1
   return 0
 }
@@ -88,31 +104,35 @@ if isRunning ; then
 fi
 
 log -n "Starting qjackctl..."
-(qjackctl --start --preset FastTrack &) >& "$JACK_LOG_FILE"
+launch "$JACK_LOG_FILE" qjackctl --start --preset FastTrack
 portWait 3 system:capture || exit 1
 log done.
 
-echo "Disconnecting PulseAudio from system ports."
 jack_disconnect 'PulseAudio JACK Sink:front-left' 'system:playback_1'
 jack_disconnect 'PulseAudio JACK Sink:front-right' 'system:playback_2'
 jack_disconnect 'system:capture_1' 'PulseAudio JACK Source:front-left'
 jack_disconnect 'system:capture_2' 'PulseAudio JACK Source:front-right'
 
+log -n "Starting Jamulus..."
+launch "$JAMUlUS_LOG_FILE" Jamulus --nojackconnect
+portWait 3 Jamulus || exit 1
+log done.
+
 log "Exposing builtin HW..."
-(alsa_in -j builtin -dhw:PCH &) >& "$BUILTIN_LOG_FILE"
+launch "$BUILTIN_LOG_FILE alsa_in -j builtin -dhw:0
 portWait 3 builtin || exit 1
 
-(alsa_in -j sabrent -dhw:Device &) >& "$SABRENT_LOG_FILE"
-portWait 3 builtin || exit 1
+launch "$SABRENT_LOG_FILE alsa_in -j sabrent -dhw:2 
+portWait 3 sabrent || exit 1
 log done.
 
 log "Exposing midi controllers..."
-(a2jmidid -e &) > "$MIDI_LOG_FILE"
+launch "$MIDI_LOG_FILE" a2jmidid -e 
 portWait 3 a2j:EWI || log "Connect midi controller."
 log done.
 
 log "Starting Ardour6..."
-(Ardour6 --template "$TEMPLATE" --new "$(sessionName)" &) >& "$ARDOUR_LOG_FILE"
+launch "$ARDOUR_LOG_FILE" Ardour6 --template "$TEMPLATE" --new "$(sessionName)"
 log done.
 
 exec alsamixer -c Track -V all
