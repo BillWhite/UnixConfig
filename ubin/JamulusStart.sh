@@ -175,6 +175,7 @@ killLaunches() {
   for NAME in ${ALLPRIOS[*]}; do
     kill ${PIDS[$NAME]}
   done
+  jack_control exit
 }
 
 printLaunches() {
@@ -239,5 +240,7 @@ log done.
 
 printLaunches
 
-# alsamixer -c Track -V all
+alsamixer -c Track -V all
+
+killLaunches
 
