@@ -24,14 +24,18 @@ while [ -z "$DONE" ] ; do
 done
 
 HOST_SESSION_NAME="$HOST Status"
-HOST_NAME="$(echo $HOST | tr [A-Z] [a-z])"
+HOST_NAME="$(echo "$HOST" | tr '[:upper:]' '[:lower:]')"
+
+echo HOST is "<$HOST>", HOST_NAME is "<$HOST_NAME>"
 
 if ! tmux ls 2> /dev/null | grep --quiet "^${HOST_SESSION_NAME}" ; then
-    byobu-tmux new-session -d -s "$HOST_SESSION_NAME" -A -n "General" ssh -t "$HOST_NAME" htop
-    byobu-tmux split-window -v ssh -t $HOST_NAME NMON=C nmon
-    byobu-tmux split-window -h ssh -t $HOST_NAME NMON=jJ nmon
+    byobu-tmux new-session -d -s "$HOST_SESSION_NAME" -A -n "General" ssh -t "$HOST_NAME" htop -u '$USER'
+    byobu-tmux split-window -v ssh -t "$HOST_NAME" NMON=C nmon
+    byobu-tmux split-window -h ssh -t "$HOST_NAME" NMON=jJ nmon
 
-    byobu-tmux new-window -t "$HOST_SESSION_NAME" -d -n CPUS ssh -t "$HOST_NAME" NMON=C nmon
+    byobu-tmux new-window -t "$HOST_SESSION_NAME" -d -n "CPUS" ssh -t "$HOST_NAME" NMON=C nmon
 
     byobu-tmux new-window -t "$HOST_SESSION_NAME" -d -n "File Systems" ssh -t "$HOST_NAME" NMON=jJ nmon
+
+    byobu-tmux new-window -t "$HOST_SESSION_NAME" -d -n "Top Processes" ssh -t "$HOST_NAME" htop
 fi
