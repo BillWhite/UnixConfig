@@ -9,7 +9,7 @@ log() {
 }
 
 sessionName() {
-  echo "$TAG--$(date --iso=seconds)"
+  echo "$TAG--$(date --iso=seconds | sed 's/:/@/g')"
 }
 
 TEMPLATE=JamulusTemplate
@@ -165,7 +165,7 @@ launch() {
     exit 100
   fi
   set -x
-  P=$(P=$("$@" >& "$LOGFILE" & echo $!); echo $P &)
+  P=$(P=$("$@" >& "$LOGFILE" & true ; echo $!); echo $P &)
   set +x
   PIDS["$NAME"]=$P
 }
@@ -200,8 +200,8 @@ fi
 
 # Don't really know why this is different.
 # log -n "Starting qjackctl..."
-# (qjackctl &)
-jack_control start
+launch --name jackd --log "$JACK_LOG_FILE" --prio 1000 -- \
+	qjackctl --start --preset FastTrack
 
 jack_disconnect 'PulseAudio JACK Sink:front-left' 'system:playback_1'
 jack_disconnect 'PulseAudio JACK Sink:front-right' 'system:playback_2'
@@ -233,9 +233,10 @@ portWait 3 a2j:EWI
 log "Connect midi controller."
 log done.
 
-log "Starting Ardour6..."
+SESSION_NAME="$(sessionName)"
+log "Starting Ardour6 Session <$SESSION_NAME>..."
 launch --name Ardour --log "$ARDOUR_LOG_FILE" --prio 0 -- \
-	Ardour6 --template "$TEMPLATE" --new "$(sessionName)"
+	Ardour6 --template "$TEMPLATE" --new "$SESSION_NAME"
 log done.
 
 printLaunches
