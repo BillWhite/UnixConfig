@@ -15,12 +15,7 @@ sessionName() {
 TEMPLATE=JamulusTemplate
 TAG="8AJ"
 LOGDIR="$HOME/2/tmp/JamulusStart.sh"
-JACK_LOG_FILE="/dev/null"
-BUILTIN_LOG_FILE="/dev/null"
-SABRENT_LOG_FILE="/dev/null"
-JAMULUS_LOG_FILE="/dev/null"
-ARDOUR_LOG_FILE="/dev/null"
-MIDI_LOG_FILE="/dev/null"
+LOG_FILE="/dev/null"
 
 rm -rf "$LOGDIR"
 
@@ -42,12 +37,7 @@ while [ -n "$1" ] ; do
     shift
     ;;
   --log)
-    JACK_LOG_FILE="$LOGDIR/jack.log"
-    BUILTIN_LOG_FILE="$LOGDIR/builtin_in.log"
-    SABRENT_LOG_FILE="$LOGDIR/sabrent_in.log"
-    JAMULUS_LOG_FILE="$LOGDIR/jamulus.log"
-    ARDOUR_LOG_FILE="$LOGDIR/ardour.log"
-    MIDI_LOG_FILE="$LOGDIR/midi.log"
+    LOG_FILE="$LOGDIR/log.txt"
     shift
     ;;
   *)
@@ -98,18 +88,12 @@ declare -A NAMES
 declare ALLPRIOS
 
 launch() {
-  local LOGFILE
   local NAME
   local PRIO
   local ERRORS
   local P
   while [ -n "$1" ] ; do
     case "$1" in
-      "--log")
-        shift
-        LOGFILE="$1"
-        shift
-	;;
       "--name")
         shift
 	NAME="$1"
@@ -138,10 +122,6 @@ launch() {
     log "  PRIO: \"$PRIO\""
     log "  CMD: \"$@\""
   fi
-  if [ -z "$LOGFILE" ] ; then
-    log "launch: Need a log file name for a launch."
-    ERRORS=YES
-  fi
   if [ -z "$NAME" ] ; then
     log "launch: Need a name for a launch."
     ERRORS=YES
@@ -165,7 +145,7 @@ launch() {
     exit 100
   fi
   set -x
-  P=$(P=$("$@" >& "$LOGFILE" & true ; echo $!); echo $P &)
+  P=$(P=$("$@" >& "$LOG_FILE" & true ; echo $!); echo $P &)
   set +x
   PIDS["$NAME"]=$P
 }
@@ -193,14 +173,14 @@ if isRunning ; then
 fi
 
 #log -n "Starting jackd..."
-#launch --name jackd --log "$JACK_LOG_FILE" --prio 1000 -- \
+#launch --name jackd --prio 1000 -- \
 #        /usr/bin/jackd -P10 -p64 -dalsa -r48000 -p256 -n2 -Xseq -D -Chw:Track -Phw:PCH
 #portWait 3 system:capture || exit 1
 #log done
 
 # Don't really know why this is different.
 # log -n "Starting qjackctl..."
-launch --name jackd --log "$JACK_LOG_FILE" --prio 1000 -- \
+launch --name jackd --prio 1000 -- \
 	qjackctl --start --preset FastTrack
 
 jack_disconnect 'PulseAudio JACK Sink:front-left' 'system:playback_1'
@@ -209,33 +189,50 @@ jack_disconnect 'system:capture_1' 'PulseAudio JACK Source:front-left'
 jack_disconnect 'system:capture_2' 'PulseAudio JACK Source:front-right'
 
 log -n "Starting Jamulus..."
-launch --name Jamulus --log "$JAMULUS_LOG_FILE" --prio 500 -- \
+launch --name Jamulus --prio 500 -- \
 	Jamulus --nojackconnect 
 portWait 3 Jamulus || exit 1
 log done.
 
 log "Exposing builtin HW..."
-launch --name "builtin" --log "$BUILTIN_LOG_FILE" --prio 250 -- \
+launch --name "builtin" --prio 250 -- \
 	alsa_in -j builtin -dhw:0 
 portWait 3 builtin || exit 1
 log done.
 
 log "Exposing Sabrent USB Device."
-launch --name "sabrent" --log "$SABRENT_LOG_FILE" --prio 251 -- \
+launch --name "sabrent" --prio 251 -- \
 	alsa_in -j sabrent -dhw:Device 
 # Don't wait exit. It may not be there.
 log done.
 
 log "Exposing midi controllers..."
-launch --name "midi" --log "$MIDI_LOG_FILE" --prio 252 -- \
-	a2jmidid -e > "$MIDI_LOG_FILE"
+launch --name "midi" --prio 252 -- \
+	a2jmidid -e > "$LOG_FILE" 2>&1
 portWait 3 a2j:EWI
 log "Connect midi controller."
 log done.
 
+log "Launching zita monitoring tool"
+launch --name zita --prio 253 -- \
+	zita-mu1
+portWait 3 zita-mu1:in_1.L
+#
+# The zita outputs don't get set up by Ardour, since
+# Ardour doesn't know anything about them.
+#
+jack_connect zita-mu1:mon_out1.L system:playback_1
+jack_connect zita-mu1:mon_out1.R system:playback_2
+log "done"
+
+log "Launching qas mixer."
+launch --name qasmixer --prio 254 -- \
+	qasmixer > "$LOG_FILE" 2>&1
+log done
+
 SESSION_NAME="$(sessionName)"
 log "Starting Ardour6 Session <$SESSION_NAME>..."
-launch --name Ardour --log "$ARDOUR_LOG_FILE" --prio 0 -- \
+launch --name Ardour --prio 0 -- \
 	Ardour6 --template "$TEMPLATE" --new "$SESSION_NAME"
 log done.
 

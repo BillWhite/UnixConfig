@@ -5,6 +5,7 @@ HOST=Localhost
 while [ -z "$DONE" ] ; do
   case "$1" in
     --#)
+      DEBUG="--#"
       set -x
       shift
       ;;
@@ -26,7 +27,9 @@ done
 HOST_SESSION_NAME="$HOST Status"
 HOST_NAME="$(echo "$HOST" | tr '[:upper:]' '[:lower:]')"
 
-echo HOST is "<$HOST>", HOST_NAME is "<$HOST_NAME>"
+if [ -n "$DEBUG" ] ; then
+  echo HOST is "<$HOST>", HOST_NAME is "<$HOST_NAME>"
+fi
 
 if ! tmux ls 2> /dev/null | grep --quiet "^${HOST_SESSION_NAME}" ; then
     byobu-tmux new-session -d -s "$HOST_SESSION_NAME" -A -n "General" ssh -t "$HOST_NAME" htop -u '$USER'
