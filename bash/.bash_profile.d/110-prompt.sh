@@ -24,5 +24,5 @@ export VIRTUAL_ENV_DISABLE_PROMPT=1
 VENV="\$(virtualenv_info)";
 # the '...' are for irrelevant i
 
-export PS1=':-----'"${VENV}"'-----:\n\u@\H: \D{%Y-%m-%d}T\t hist: \! cmd: \#'$PSARCH' \n\w\n:----------:\n> '
+export PS1=':-----'"${VENV}"'-----:\n\u@\H: \D{%Y-%m-%d}T\t hist: \! cmd: \#'$PSARCH' \n\w\n:-----'"${VENV}"'-----:\n> '
 unset PSARCH
