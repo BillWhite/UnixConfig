@@ -1,4 +1,0 @@
-#!/bin/sh
-for s in "$@" ; do
-  echo "$s"
-done

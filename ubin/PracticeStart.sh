@@ -1,118 +1,85 @@
-#!/bin/bash
-
-now() {
-  echo "$(date "+%s")"
-}
-
-log() {
-  echo "$@"
-}
-
-sessionName() {
-  echo "$TAG $(date --iso=seconds | sed 's/:/-/g')"
-}
+#!/bin/bash -x
 
 TEMPLATE=PracticeTemplate
 TAG="GRI"
-LOGDIR="$HOME/2/tmp"
-JACK_LOG_FILE="/dev/null"
-BUILTIN_LOG_FILE="/dev/null"
-SABRENT_LOG_FILE="/dev/null"
-ARDOUR_LOG_FILE="/dev/null"
-MIDI_LOG_FILE="/dev/null"
+LOGDIR="$HOME/2/tmp/PracticeStart.sh"
+JACK_PRESET=FastTrack
 
-while [ -n "$1" ] ; do
-  case "$1" in
-  --template|-T)
-    shift
-    TEMPLATE="$1"
-    shift
-    ;;
-  --tag|-G)
-    shift
-    TAG="$1"
-    shift
-    ;;
-  --log)
-    JACK_LOG_FILE="$LOGDIR/jack.log"
-    BUILTIN_LOG_FILE="$LOGDIR/builtin_in.log"
-    SABRENT_LOG_FILE="$LOGDIR/sabrent_in.log"
-    ARDOUR_LOG_FILE="$LOGDIR/ardour.log"
-    MIDI_LOG_FILE="$LOGDIR/midi.log"
-    shift
-    ;;
-  *)
-    echo "$0: Unknown command line parameter \"$1\""
-    exit 1
-    ;;
-  esac
-done
+rm -rf "$LOGDIR"
+mkdir -p "$LOGDIR"
 
-lookForPort() {
-  local PN="$1"
-  P="$(jack_lsp "$PN" 2> /dev/null)"
-  if [ -n "$P" ] ; then
-    return 0
-  else
-    return 1
-  fi
-}
+. AudioFunctions.sh
 
-portWait() {
-  local TIMEOUT="$1"
-  local PORT="$2"
-  local NOW="$(now)"
-  local FAILTIME="$(( "$NOW" + "$TIMEOUT"))"
-  while test "$NOW" -lt "$FAILTIME"; do
-    if lookForPort "$PORT"; then
-      return 0
-    fi
-    NOW="$(now)"
-    # echo "$NOW:$FAILTIME"
-  done
-  echo "Timeout waiting for port $PORT"
-  return 1
-}
+builtin=true
+hydrogen=true
+gxtuner=true
+sooperlooper=true
+gxtuner=true
+zita=true
+ardour=true
 
-isRunning() {
-  lookForPort system || \
-	lookForPort "builtin" || \
-	lookForPort "sabrent" ||
-	return 1
-  return 0
-}
+log -n "Start qjackctl."
+start_jackd --preset FastTrack --disconnect-pulseaudio
 
-if isRunning ; then
-  echo "$0: Is Jamulus running already?"
-  exit 1
+if $builtin ; then
+    log "Exposing builtin HW..."
+    launch --name "builtin" --prio 250 -- \
+	   alsa_in -j builtin -dhw:0 
+    portWait 3 builtin || exit 1
+    log done.
 fi
 
-log -n "Starting qjackctl..."
-(qjackctl --start --preset FastTrack &) >& "$JACK_LOG_FILE"
-portWait 3 system:capture || exit 1
-log done.
+if $hydrogen ; then
+    log "Launching Hydrogen..."
+    launch --name hydrogen --prio 251 -- \
+           hydrogen -s "$HOME/src/HydrogenSongs/Metronomes.h2song" 
+    portWait 5 Hydrogen || exit 1
+    jack_disconnect Hydrogen:out_L system:playback_1
+    jack_disconnect Hydrogen:out_R system:playback_2
+fi
 
-echo "Disconnecting PulseAudio from system ports."
-jack_disconnect 'PulseAudio JACK Sink:front-left' 'system:playback_1'
-jack_disconnect 'PulseAudio JACK Sink:front-right' 'system:playback_2'
-jack_disconnect 'system:capture_1' 'PulseAudio JACK Source:front-left'
-jack_disconnect 'system:capture_2' 'PulseAudio JACK Source:front-right'
+if $gxtuner ; then
+    log "Launching GxTuner..."
+    launch --name gxtuner --prio 252 -- \
+           carla-single 'http://guitarix.sourceforge.net/plugins/gxtuner#tuner'
+    portWait 10 GxTuner || exit 1
+    jack_connect system:capture_1 GxTuner:In
+    jack_connect system:capture_2 GxTuner:In
 
-log "Exposing builtin HW..."
-(alsa_in -j builtin -dhw:PCH &) >& "$BUILTIN_LOG_FILE"
-portWait 3 builtin || exit 1
+fi
 
-(alsa_in -j sabrent -dhw:Device &) >& "$SABRENT_LOG_FILE"
-portWait 3 builtin || exit 1
-log done.
+if $sooperlooper; then
+    log "Launching Sooperlooper ..."
+    killall sooperlooper
+    launch --name sooperlooper --prio 253 -- \
+           slgui -H localhost -t 120
+    portWait 3 sooperlooper || exit 1
+fi
 
-log "Exposing midi controllers..."
-(a2jmidid -e &) > "$MIDI_LOG_FILE"
-portWait 3 a2j:EWI || log "Connect midi controller."
-log done.
+if $zita ; then
+    log "Launching zita..."
+    launch --name zita --prio 254 -- \
+           zita-mu1
+    portWait 5 zita-mu1 || exit 1
+    jack_connect zita-mu1:mon_out1.L system:playback_1
+    jack_connect zita-mu1:mon_out1.R system:playback_2
+fi
 
-log "Starting Ardour6..."
-(Ardour6 --template "$TEMPLATE" --new "$(sessionName)" &) >& "$ARDOUR_LOG_FILE"
-log done.
+if $ardour; then
+    log "Starting Ardour6..."
+    launch --name ardour --prio 255 -- \
+	    Ardour6 --template "$TEMPLATE" --new "$(sessionName)"
+    portWait 10 ardour:LTC-Out
+    jack_disconnect Master:audio_out1 system:playback_1
+    jack_disconnect Master:audio_out2 system:playback_2
+    log done.
+fi
 
-exec alsamixer -c Track -V all
+launch --name qasmixer --prio 256 -- \
+    qasmixer
+
+alsamixer -c Track -V all
+
+killLaunches
+
+killall qasmixer
