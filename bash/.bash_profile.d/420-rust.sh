@@ -1,2 +1,2 @@
-. "/home/poppa/2/.cargo/env"
+. "/home/poppa/.cargo/env"
 
