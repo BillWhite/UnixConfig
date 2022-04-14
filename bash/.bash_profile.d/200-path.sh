@@ -35,12 +35,9 @@ prepend_to_path "$HOME/ubin"
 prepend_to_path "$HOME/vbin"
 prepend_to_path "$HOME/.local/bin"
 prepend_to_path "/opt/bin"
-append_to_path "$ba/bin"
+prepend_to_path "/home/opt/bin"
 
-LD_LIBRARY_PATH="/usr/local/lib:/opt/lib:$ba/lib"
+LD_LIBRARY_PATH="/usr/local/lib:/opt/lib"
 
 export PATH
 export LD_LIBRARY_PATH
-
-export PKG_CONFIG_PATH=$ba/lib/pkgconfig
-
