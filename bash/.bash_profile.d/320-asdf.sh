@@ -1,3 +1,3 @@
-if [ -x "$HOME/.asdf/asdf.sh" ] ; then
+if [ -d "$HOME/.asdf/bin" ] ; then
     . $HOME/.asdf/asdf.sh
 fi
