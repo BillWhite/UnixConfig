@@ -1,7 +1,2 @@
-#!/bin/sh -x
-if [ -z "$DISPLAY" ] ; then
-    READER="lynx -stdin"
-else
-    READER='google-chrome "data:text/html;base64,$(base64 -w 0)"'
-fi
-pandoc $@ | $READER
+#!/bin/sh
+pandoc -o - --to plain "$@"

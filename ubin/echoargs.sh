@@ -1,9 +1,10 @@
 #!/bin/sh
 
+echo "$1"
 N=1
-echo -n mv
+shift
 for arg in "$@"; do
-    echo -n " <$arg>"
+    echo "    $N: <$arg>"
     N=$(($N+1))
 done
 echo

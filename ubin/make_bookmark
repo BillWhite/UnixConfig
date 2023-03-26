@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import re
+import subprocess
+import tempfile
+from pathlib import Path
+
+tmpFileCtr = 0
+def tmpDir():
+    answer = Path("./tmp")
+    mkdir(answer, exists_ok = True)
+
+def makeTempFilePath(pattern, suffix='txt'):
+    '''
+    Make a temp file with a pattern and a given suffix. The file name
+    will be "pattern_N.{suffix}" where N is a counter, incremented
+    everytime this function is called.
+    '''
+    filectr = tmpFileCtr
+    tmpPath = tmpDir() / Path(f'{pattern}_{filectr}.{suffix}')
+    tmpFileCtr += 1
+    return tmpPath
+
+def run_command(*command, **kwArgs):
+    print(f'Running command : {command}')
+    if True:
+        stdout=subprocess.DEVNULL
+        stdin=subprocess.DEVNULL
+        stderr=subprocess.DEVNULL
+        out = subprocess.Popen(command,
+                               stdout=stdout,
+                               stderr=stderr,
+                               stdin=stdin)
+        value = out.communicate()
+    return {'returncode': 1}
+
+class Errors(object):
+    LEVEL_INFO=0
+    LEVEL_WARNINGS=1
+    LEVEL_ERRORS=2
+    LEVEL_FATAL=3
+    _level = LEVEL_WARNINGS
+    _prog_name = Path(sys.argv[0])
+    _num_errors = 0
+    _num_warnings = 1
+
+    def __init__(self):
+        pass
+
+    @classmethod
+    def info(errs, message):
+        if errs.LEVEL_INFO <= errs._level:
+            print(f'{errs._prog_name}: Info: {message}')
+
+    @classmethod
+    def warning(errs, message):
+        if errs.LEVEL_WARNINGS <= errs._level:
+            print(f'{errs._prog_name}: Warning: {message}')
+        errs._num_warnings += 1
+
+    @classmethod
+    def error(errs, message):
+        if errs.LEVEL_ERRORS <= errs._level:
+            print(f'{errs._prog_name}: Error: {message}')
+        errs._num_errors += 1
+
+    @classmethod
+    def fatal(errs, message, rv=100):
+        print(f'{errs._prog_name}: Fatal: {message}')
+        sys.exit(rv)
+
+    @classmethod
+    def set_program_name(cls, name):
+        cls.prog_name = name
+
+    @classmethod
+    def get_program_name(cls, fame):
+        return cls.prog_name
+
+    @classmethod
+    def set_level(cls, level):
+        cls._level = level
+
+class Bookmark(object):
+    line_pattern = re.compile(
+        '''(?P<first_page>[0-9]+)(?:-(?P<last_page>[0-9]+))?;(?P<level>[0-9]+);(?P<title>.*)'''
+    )
+    def __init__(self, line):
+        m = self.line_pattern.match(line)
+        if not m:
+            self.is_valid = False
+            Errors.warning(f'Line \'{line}\' is malformed.')
+        else:
+            self.is_valid = True
+            self.first_page = m['first_page']
+            self.last_page = m['last_page']
+            self.level = m['level']
+            self.title = m['title']
+
+    def __str__(self):
+        if self.last_page:
+            last_page = self.last_page
+        else:
+            last_page = 'UNDEFINED'
+        return f'first_page: {self.first_page}, last_page: {last_page}, level: {self.level}, title: {self.title}'
+
+class CSVFile(object):
+    def __init__(self, csvname):
+        self.bookmarks = []
+        if csvname[-4:] != '.csv':
+            Errors.fatal(f'file {csvname} is not a csv file.')
+        self.full_csv_path=Path(csvname)
+        self.stem = self.full_csv_path.stem
+        self.parent = self.full_csv_path.parent
+        self.ext  = self.full_csv_path.suffix
+        self.full_pdf_path = self.parent / Path(f'{self.stem}.pdf')
+        if not self.full_csv_path.exists():
+            Errors.fatal(f'CSV file {str(self.full_csv_path)} does not exist.')
+        self.full_csv_path = self.full_csv_path.resolve()
+        if not self.full_pdf_path.exists():
+            Errors.fatal(f'PDF file {str(self.full_pdf_path)} does not exist.')
+        self.full_pdf_path = self.full_pdf_path.resolve()
+        self.full_toc_path = (self.parent / Path(f'{self.stem}.toc')).resolve()
+        with open(self.full_csv_path, "r") as ifile:
+            elines = [Bookmark(l)
+                          for l in ifile.read().split('\n')
+                          if CSVFile.is_valid_line(l)]
+            self._bookmarks = [b for b in elines if b.is_valid]
+
+    def __str__(self):
+        return f'CSVFile(\'{self.full_csv_path}\')'
+
+    @staticmethod
+    def is_valid_line(line):
+        return line and line[0] != '#'
+
+    def move_file(self, from_path, to_path):
+        if from_path.exists():
+            Errors.info(f'Moving {str(from_path)} to {str(to_path)}')
+            to_path.hardlink_to(from_path)
+            from_path.unlink(missing_ok=True)
+
+    def roll_some_files(self, current_path, stem, suffix):
+        count = 1
+        Errors.info(f'Rolling {stem}.{suffix}')
+        while count < 100:
+            next_path = self.parent / Path(f'{stem}.{count}.{suffix}')
+            Errors.info(f'  looking for {next_path}')
+            if not next_path.exists():
+                break
+            count += 1
+        while count > 1:
+            count -= 1
+            prev_path = self.parent / Path(f'{stem}.{count}.{suffix}')
+            move_file(prev_path, next_path)
+            next_path = prev_path
+        self.move_file(current_path, next_path)
+        return next_path
+
+    def roll_toc_files(self):
+        return self.roll_some_files(self.full_toc_path,
+                                    self.stem,
+                                    'toc')
+
+    def roll_pdf_files(self):
+        return self.roll_some_files(self.full_pdf_path,
+                                    self.stem,
+                                    'pdf')
+
+    def make_toc_file(self):
+        with open(self.full_toc_path, "w") as ofile:
+            for mark in self._bookmarks:
+                level = mark.level
+                page = mark.first_page
+                title = mark.title
+                ofile.write('BookmarkBegin\n')
+                ofile.write(f'BookmarkLevel: {level}\n')
+                ofile.write(f'BookmarkTitle: {title}\n')
+                ofile.write(f'BookmarkPageNumber: {page}\n')
+
+    def process_one_file(self, **kwArgs):
+        old_toc = self.roll_toc_files()
+        self.make_toc_file()
+        old_pdf = self.roll_pdf_files()
+        answer = run_command("pdftk",
+                             old_pdf,
+                             "update_info",
+                             str(self.full_toc_path),
+                             "output",
+                             str(self.full_pdf_path))
+        self._return_code = answer['returncode']
+
+
+class CSVBookmarks(object):
+    def __init__(self, prog_name, args):
+        Errors.set_program_name(prog_name)
+        self._prog_name = prog_name
+        parser = argparse.ArgumentParser(prog=prog_name,
+                                         description='Convert csv files to pdf bookmarks.',
+                                         epilog='Convert csv files to bookmarks. Optionally, add to PDF files.')
+        parser.add_argument("filenames", nargs='*')
+        self._args = parser.parse_args(args)
+        self._files = []
+        for filename in self._args.filenames:
+            Errors.info(f'Reading file {filename}')
+            self._files.append(CSVFile(filename))
+
+    def process(self):
+        for file in self._files:
+            Errors.info(f'Processing file f{str(file)}')
+            file.process_one_file()
+
+    def return_status(self):
+        for file in self._files:
+            if file._return_code > 0:
+                return file._return_code
+        return 0
+
+if __name__ == '__main__':
+    Errors.set_level(Errors.LEVEL_INFO)
+    main = CSVBookmarks(sys.argv[0], sys.argv[1:])
+    main.process()
+
